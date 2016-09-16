@@ -1,0 +1,160 @@
+package util;
+
+import java.beans.BeanInfo;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class ConfigUtil {
+	
+	public static List<Map<String, String>> sortList(List<Map<String, String>> lists){
+		for(int i=0;i<lists.size();i++){
+			for(int j=1;j<lists.size()-1;j++){
+				if(Integer.parseInt(lists.get(i).get("ARM_ORDER"))> Integer.parseInt(lists.get(j).get("ARM_ORDER"))){
+					Map<String,String> temp=lists.get(i);
+					lists.set(i, lists.get(j));
+					lists.set(j, temp);
+				}
+			}
+		}
+		return lists;
+	}
+	
+	public static Map<String, String> transBeantoMap(Object obj) {
+//        if(obj == null){  
+//            return null;  
+//        }          
+        Map<String, String> map = new HashMap<String, String>();
+        try {  
+            BeanInfo beanInfo = Introspector.getBeanInfo(obj.getClass());
+            PropertyDescriptor[] propertyDescriptors = beanInfo.getPropertyDescriptors();
+            for (PropertyDescriptor property : propertyDescriptors) {
+                String key = property.getName();
+  
+                // 过滤class属性  
+                if (!key.equals("class")) {  
+                    // 得到property对应的getter方法  
+                    Method getter = property.getReadMethod();
+                    Object value = getter.invoke(obj);
+                    if(value==null){
+                    	map.put(key, "");  
+                    }else{
+                    	map.put(key, value.toString());  
+                    }
+                }  
+            }  
+        } catch (Exception e) {
+            System.out.println("transBean2Map Error " + e);
+        }  
+  
+        return map;  
+  
+    }  
+	
+	
+	public static String clacCountDown(String timeStr){
+		String result="";
+		String[] times=timeStr.split(":");
+		long endTime= Long.parseLong(times[0])*3600+ Long.parseLong(times[1])*60+ Long.parseLong(times[2])+2;
+		long hour=endTime/3600;
+		long min=(endTime%3600)/60;
+		long s=(endTime%3600)%60;
+		String hStr="";
+		if(hour<10){
+			hStr="0"+hour;
+		}else{
+			hStr= String.valueOf(hour);
+		}
+		String mStr="";
+		if(min<10){
+			mStr="0"+min;
+		}else{
+			mStr= String.valueOf(min);
+		}
+		String sStr="";
+		if(s<10){ 
+			sStr="0"+s;
+		}else{
+			sStr= String.valueOf(s);
+		}
+		result=hStr+":"+mStr+":"+sStr;
+		return result;
+	}
+	
+	public static boolean isLetter(char c) { 
+        int k = 0x80; 
+        return c / k == 0 ? true : false; 
+    }
+	
+	public static int getStrlength(String s) {
+        if (s == null)
+            return 0;
+        char[] c = s.toCharArray();
+        int len = 0;
+        for (int i = 0; i < c.length; i++) {
+            len++;
+            if (!isLetter(c[i])) {
+                len++;
+            }
+        }
+        return len;
+    }
+	
+	public static boolean isMobile(String str) {
+	    Pattern p = null;
+	    Matcher m = null;
+	    boolean b = false;   
+	    p = Pattern.compile("^[1][3,4,5,7,8][0-9]{9}$"); // 验证手机号
+	    m = p.matcher(str);  
+	    b = m.matches();   
+	    return b;  
+	} 
+	
+	public static boolean isCode(String str) {
+        Pattern p = null;
+        Matcher m = null;
+        boolean b = false;   
+        p = Pattern.compile("^[0-9]{6}$"); // 验证手机号
+	    m = p.matcher(str);  
+	    b = m.matches();   
+	    return b;  
+	} 
+	
+	 public static char getVerifyCode(String idCardNumber) throws Exception {
+        if(idCardNumber == null || idCardNumber.length() < 17) {  
+            throw new Exception("不合法的身份证号码");
+        }  
+        char[] Ai = idCardNumber.toCharArray();  
+        int[] Wi = {7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2};  
+        char[] verifyCode = {'1','0', 'X', '9', '8', '7', '6', '5', '4', '3', '2'};  
+        int S = 0;  
+        int Y;  
+        for(int i = 0; i < Wi.length; i++){  
+            S += (Ai[i] - '0') * Wi[i];  
+        }  
+        Y = S % 11;  
+        return verifyCode[Y];  
+    }  
+	 
+//	public static boolean isZZKFlag(String name){
+//		boolean flag=false;
+//		for(int i=0;i<name.length();i++){
+//			for(int h=i+1;h<=name.length();h++){
+//				String newNameStr=name.substring(i,h);
+//				//System.out.println("i--------->("+i+","+h+")--->"+newNameStr);
+//				for(int j=0;j<MyConfig.zzk.length;j++){
+//					if(newNameStr.equals(MyConfig.zzk[j])){
+//						flag=true;
+//						return flag;
+//					}
+//				}
+//			}
+//		}
+//		return flag;
+//	}
+}

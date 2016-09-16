@@ -1,0 +1,319 @@
+package main.redis;
+
+import redis.clients.jedis.JedisCluster;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+public class RedisHandler {
+
+    /**
+     * 根据id取用户信息
+     *
+     * @param uId
+     * @return
+     */
+    public static Map<String, String> getUserInfo(final String uId) {
+        Map<String, String> postsMap = RedisManager.doSomething(new RedisManager.JedisHandler<Map<String, String>>() {
+            @Override
+            protected Map<String, String> handle(JedisCluster jedis) {
+                Map<String, String> map = jedis.hgetAll("obj_user:uid:" + uId);
+                return map;
+            }
+        });
+        return postsMap;
+    }
+
+
+    /**
+     * 手机验证码 存入redis，120s
+     *
+     * @param mobile
+     * @return
+     */
+    public static String getPhoneCode(final String mobile) {
+
+        String res = RedisManager.doSomething(new RedisManager.JedisHandler<String>() {
+            @Override
+            protected String handle(JedisCluster jedis) {
+                return jedis.get("gx_phone_code:" + mobile);
+            }
+        });
+        return res;
+    }
+
+    /**
+     * 手机验证码 存入redis，120s
+     *
+     * @param mobile
+     * @return
+     */
+    public static int setPhoneCode(final String mobile, final int phoneCode) {
+
+        int res = RedisManager.doSomething(new RedisManager.JedisHandler<Integer>() {
+            @Override
+            protected Integer handle(JedisCluster jedis) {
+                jedis.set("gx_phone_code:" + mobile, String.valueOf(phoneCode));
+                jedis.expire("gx_phone_code:" + mobile, 120);
+                return 1;
+            }
+        });
+        return res;
+    }
+
+    /**
+     * 根据uid取收货地址
+     *
+     * @param uid
+     * @return
+     */
+    public static List<Map<String, String>> getUserAddresss(final String uid) {
+        List<Map<String, String>> address = RedisManager.doSomething(new RedisManager.JedisHandler<List<Map<String, String>>>() {
+            @Override
+            protected List<Map<String, String>> handle(JedisCluster jedis) {
+                List<Map<String, String>> address = new ArrayList<Map<String, String>>();
+                Set<String> ids = jedis.zrevrange("obj_user_ship_address:sset:uid:" + uid, 0, -1);
+                for (int i = 0; i < ids.size(); i++) {
+                    Map<String, String> map = jedis.hgetAll("obj_user_ship_address:id:" + ids.toArray()[i]);
+                    if (map != null && map.size() > 0) {
+                        Map<String, String> areaInfo = jedis.hgetAll("ref_area:areaid:" + map.get("areaid"));
+                        String areaStr = areaInfo.get("name");
+                        if (!areaInfo.get("fatherid").equals("0")) {
+                            Map<String, String> fatherAreaInfo = jedis.hgetAll("ref_area:areaid:" + areaInfo.get("fatherid"));
+                            areaStr = fatherAreaInfo.get("name") + areaStr;
+                            if (!fatherAreaInfo.get("fatherid").equals("0")) {
+                                Map<String, String> grandfatherAreaInfo = jedis.hgetAll("ref_area:areaid:" + fatherAreaInfo.get("fatherid"));
+                                areaStr = grandfatherAreaInfo.get("name") + areaStr;
+                            }
+                        }
+                        map.put("areaStr", areaStr);
+                        address.add(map);
+                    }
+                }
+
+                return address;
+            }
+        });
+        return address;
+    }
+
+
+    /**
+     * 新增用户
+     *
+     * @param userInfo
+     */
+    public static int insertUserInfo(final Map<String, String> userInfo) {
+        return RedisManager.doSomething(new RedisManager.JedisHandler<Integer>() {
+            @Override
+            protected Integer handle(JedisCluster jedis) {
+                jedis.zadd("obj_user:sset:u_name:" + userInfo.get("u_name"), 0, userInfo.get("uid"));
+                jedis.zadd("obj_user:sset:mobile:" + userInfo.get("mobile"), 0, userInfo.get("uid"));
+                jedis.hmset("obj_user:uid:" + userInfo.get("uid"), userInfo);
+                return 1;
+            }
+        });
+    }
+
+    /**
+     * 更新用户信息
+     *
+     * @param userInfo
+     */
+    public static void updateUserInfo(final Map<String, String> userInfo) {
+        RedisManager.doSomething(new RedisManager.JedisHandler<Map<String, String>>() {
+            @Override
+            protected Map<String, String> handle(JedisCluster jedis) {
+                jedis.hmset("obj_user:uid:" + userInfo.get("uid"), userInfo);
+                return null;
+            }
+        });
+    }
+
+    /**
+     * 删除用户信息
+     *
+     * @param userInfo
+     */
+    public static void deleteUserInfo(final Map<String, String> userInfo) {
+        RedisManager.doSomething(new RedisManager.JedisHandler<Map<String, String>>() {
+            @Override
+            protected Map<String, String> handle(JedisCluster jedis) {
+                jedis.del("obj_user:uid:" + userInfo.get("uid"));
+                jedis.del("obj_user:sset:u_name:" + userInfo.get("u_name"));
+                jedis.del("obj_user:sset:mobile:" + userInfo.get("mobile"));
+                return null;
+            }
+        });
+    }
+
+
+    /**
+     * 根据名称取用户信息
+     *
+     * @param uName
+     * @return
+     */
+    public static Map<String, String> getUserInfoByUname(final String uName) {
+        Map<String, String> postsMap = RedisManager.doSomething(new RedisManager.JedisHandler<Map<String, String>>() {
+            @Override
+            protected Map<String, String> handle(JedisCluster jedis) {
+                Set<String> ids = jedis.zrange("obj_user:sset:u_name:" + uName, 0, -1);
+                Map<String, String> map = jedis.hgetAll("obj_user:uid:" + ids.toArray()[0]);
+                return map;
+            }
+        });
+        return postsMap;
+    }
+
+    /**
+     * 根据手机号取用户信息
+     *
+     * @param phone
+     * @return
+     */
+    public static Map<String, String> getUserInfoByPhone(final String phone) {
+        Map<String, String> postsMap = RedisManager.doSomething(new RedisManager.JedisHandler<Map<String, String>>() {
+            @Override
+            protected Map<String, String> handle(JedisCluster jedis) {
+                Set<String> ids = jedis.zrange("obj_user:sset:mobile:" + phone, 0, -1);
+                Map<String, String> map = jedis.hgetAll("obj_user:uid:" + ids.toArray()[0]);
+                return map;
+            }
+        });
+        return postsMap;
+    }
+
+    public static int saveUserAddress(final Map<String, String> map) {
+        final String id = map.get("id");
+        final String uid = map.get("uid");
+        final String flag = map.get("flag");
+
+        int res = RedisManager.doSomething(new RedisManager.JedisHandler<Integer>() {
+            @Override
+            protected Integer handle(JedisCluster jedis) {
+                String hmsetRes = jedis.hmset("obj_user_ship_address:id:" + id, map);
+                System.out.println("===1========>>" + hmsetRes);
+                Long zaddRes = jedis.zadd("obj_user_ship_address:sset:uid:" + uid, Long.parseLong(flag), id);
+                System.out.println("===2========>>" + zaddRes);
+
+                return 1;
+            }
+        });
+
+        return res;
+    }
+
+
+    public static int updateUserAddress(final Map<String, String> map) {
+        final String id = map.get("id");
+        final String uid = map.get("uid");
+        final String flag = map.get("flag");
+
+        int res = RedisManager.doSomething(new RedisManager.JedisHandler<Integer>() {
+            @Override
+            protected Integer handle(JedisCluster jedis) {
+
+                String key = "obj_user_ship_address:id:" + id;
+                for (Map.Entry<String, String> entry : map.entrySet()) {
+                    String field = entry.getKey();
+                    String value = entry.getValue();
+                    jedis.hset(key,field,value);
+                }
+                return 1;
+            }
+        });
+
+        return res;
+    }
+
+
+    public static int delUserAddress(final String id, final String uid) {
+
+        int res = RedisManager.doSomething(new RedisManager.JedisHandler<Integer>() {
+            @Override
+            protected Integer handle(JedisCluster jedis) {
+                jedis.del("obj_user_ship_address:id:" + id);
+                jedis.zrem("obj_user_ship_address:sset:uid:" + uid, id);
+                return 1;
+            }
+        });
+
+        return res;
+    }
+
+
+    public static Map<String, String> getAreaInfo(final String areaId) {
+        Map<String, String> postsMap = RedisManager.doSomething(new RedisManager.JedisHandler<Map<String, String>>() {
+            @Override
+            protected Map<String, String> handle(JedisCluster jedis) {
+                Map<String, String> map = jedis.hgetAll("ref_area:areaid:" + areaId);
+                if (map != null && map.size() > 0) {
+                    Map<String, String> areaInfo = jedis.hgetAll("ref_area:areaid:" + map.get("areaid"));
+                    String areaStr = areaInfo.get("name");
+                    if (!areaInfo.get("fatherid").equals("0")) {
+                        Map<String, String> fatherAreaInfo = jedis.hgetAll("ref_area:areaid:" + areaInfo.get("fatherid"));
+                        areaStr = fatherAreaInfo.get("name") + areaStr;
+                        if (!fatherAreaInfo.get("fatherid").equals("0")) {
+                            Map<String, String> grandfatherAreaInfo = jedis.hgetAll("ref_area:areaid:" + fatherAreaInfo.get("fatherid"));
+                            areaStr = grandfatherAreaInfo.get("name") + areaStr;
+                        }
+                    }
+                    map.put("areaStr", areaStr);
+                }
+                return map;
+            }
+        });
+        return postsMap;
+    }
+
+    /**
+     * 取城市列表
+     *
+     * @return
+     */
+    public static List<Map<String, String>> getCitysInfo() {
+        List<Map<String, String>> citysInfo = RedisManager.doSomething(new RedisManager.JedisHandler<List<Map<String, String>>>() {
+            @Override
+            protected List<Map<String, String>> handle(JedisCluster jedis) {
+                List<Map<String, String>> citys = new ArrayList<Map<String, String>>();
+                Set<String> ids = jedis.zrange("ref_area:sset:path_level:1", 0, -1);
+                for (int i = 0; i < ids.size(); i++) {
+                    Map<String, String> map = jedis.hgetAll("ref_area:areaid:" + ids.toArray()[i]);
+                    if (map != null && map.size() > 0) {
+                        citys.add(map);
+                    }
+                }
+                return citys;
+            }
+        });
+        return citysInfo;
+    }
+
+    /**
+     * 根据城市id取地区列表
+     *
+     * @return
+     */
+    public static List<Map<String, String>> getCountysInfo(final String cityid) {
+        List<Map<String, String>> citysInfo = RedisManager.doSomething(new RedisManager.JedisHandler<List<Map<String, String>>>() {
+            @Override
+            protected List<Map<String, String>> handle(JedisCluster jedis) {
+                List<Map<String, String>> citys = new ArrayList<Map<String, String>>();
+                Set<String> ids = jedis.zrange("ref_area:sset:fatherid:" + cityid, 0, -1);
+                for (int i = 0; i < ids.size(); i++) {
+                    Map<String, String> map = jedis.hgetAll("ref_area:areaid:" + ids.toArray()[i]);
+                    if (map != null && map.size() > 0) {
+                        citys.add(map);
+                    }
+                }
+                return citys;
+            }
+        });
+        return citysInfo;
+    }
+
+
+}

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE generatorConfiguration PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN" "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
+<generatorConfiguration>
+
+  <classPathEntry
+          location="/Users/app/Documents/workspace_java/adminche/WebContent/WEB-INF/lib/mysql-connector-java-5.0.4-bin.jar" />
+
+  <context id="context1" targetRuntime="MyBatis3">
+
+    <!-- beginningDelimiter和endingDelimiter：指明数据库的用于标记数据库对象名的符号，比如ORACLE就是双引号，MYSQL默认是`反引号； -->
+    <property name="beginningDelimiter" value="`"/>
+    <property name="endingDelimiter" value="`"/>
+
+
+
+
+
+
+    <!-- 这个插件用来在XXXExample类中生成大小写敏感的LIKE方法 -->
+    <!-- <plugin type="org.mybatis.generator.plugins.CaseInsensitiveLikePlugin"></plugin>   -->
+
+    <!-- 这个插件主要用来为生成的Java模型类添加序列化接口，并生成serialVersionUID字段； -->
+    <!-- <plugin type="org.mybatis.generator.plugins.SerializablePlugin"></plugin> -->
+
+    <!-- 为生成的Java模型创建一个toString方法 -->
+    <plugin type="org.mybatis.generator.plugins.ToStringPlugin"></plugin>
+
+
+    <!-- 引入配置文件
+    <properties resource="mysql.properties"/>
+-->
+
+    <jdbcConnection driverClass="com.mysql.jdbc.Driver"
+                    connectionURL="jdbc:mysql://192.168.1.243:3306/gxweb?useUnicode=true&amp;characterEncoding=utf-8"
+                    userId="main" password="main" />
+
+   <javaModelGenerator targetPackage="com.gx.model"
+                       targetProject="src/main/java" />
+
+   <sqlMapGenerator targetPackage="mapping"
+                    targetProject="src/main/resources" />
+
+
+
+    <javaClientGenerator targetPackage="com.gx.dao"
+                         targetProject="src/main/java" type="XMLMAPPER" />
+
+
+    <table schema="user" tableName="user">
+      <!-- 如果设置为true，生成的model类会直接使用column本身的名字，而不会再使用驼峰命名方法，比如BORN_DATE，生成的属性名字就是BORN_DATE,而不会是bornDate -->
+      <property name="useActualColumnNames" value="true"/>
+    </table>
+
+
+
+    <table schema="mybatis" tableName="obj_enterprise"><property name="useActualColumnNames" value="true"/></table>
+    <table schema="mybatis" tableName="obj_ent_product"><property name="useActualColumnNames" value="true"/></table>
+    <table schema="mybatis" tableName="obj_ent_product_class"><property name="useActualColumnNames" value="true"/></table>
+    <table schema="mybatis" tableName="obj_ent_shop"><property name="useActualColumnNames" value="true"/></table>
+    <table schema="mybatis" tableName="obj_ent_user"><property name="useActualColumnNames" value="true"/></table>
+    <table schema="mybatis" tableName="obj_ind_user"><property name="useActualColumnNames" value="true"/></table>
+    <table schema="mybatis" tableName="obj_product_evaluation"><property name="useActualColumnNames" value="true"/></table>
+    <table schema="mybatis" tableName="obj_user"><property name="useActualColumnNames" value="true"/></table>
+    <table schema="mybatis" tableName="obj_user_buy_log"><property name="useActualColumnNames" value="true"/></table>
+    <table schema="mybatis" tableName="obj_user_collect_ent"><property name="useActualColumnNames" value="true"/></table>
+    <table schema="mybatis" tableName="obj_user_collect_product"><property name="useActualColumnNames" value="true"/></table>
+    <table schema="mybatis" tableName="obj_user_complaint_ent"><property name="useActualColumnNames" value="true"/></table>
+    <table schema="mybatis" tableName="obj_user_complaint_product"><property name="useActualColumnNames" value="true"/></table>
+    <table schema="mybatis" tableName="obj_user_invoice"><property name="useActualColumnNames" value="true"/></table>
+    <table schema="mybatis" tableName="obj_user_order"><property name="useActualColumnNames" value="true"/></table>
+    <table schema="mybatis" tableName="obj_user_ship_address"><property name="useActualColumnNames" value="true"/></table>
+    <table schema="mybatis" tableName="obj_user_shop_cart"><property name="useActualColumnNames" value="true"/></table>
+    <table schema="mybatis" tableName="ref_area"><property name="useActualColumnNames" value="true"/></table>
+    <table schema="mybatis" tableName="ref_industry"><property name="useActualColumnNames" value="true"/></table>
+    <table schema="mybatis" tableName="ref_product_class"><property name="useActualColumnNames" value="true"/></table>
+
+  </context>
+</generatorConfiguration>

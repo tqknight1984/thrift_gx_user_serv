@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+
+    <!-- 给类取别名，否则你必须要用包名加类名来保证类的唯一性 -->
+    <typeAliases>
+
+        <typeAlias alias="ObjUser" type="com.gx.model.ObjUser" />
+    </typeAliases>
+
+    <environments default="development">
+        <environment id="development">
+            <!-- 事务管理类型 -->
+            <transactionManager type="JDBC" />
+            <!-- 数据源 -->
+            <dataSource type="POOLED">
+                <property name="driver" value="com.mysql.jdbc.Driver" />
+                <property name="url" value="jdbc:mysql://192.168.1.243:3306/gxweb" />
+                <property name="username" value="main" />
+                <property name="password" value="main" />
+
+            </dataSource>
+        </environment>
+    </environments>
+
+    <mappers>
+        <!-- 映射文件实现 -->
+        <mapper resource="mapping/ObjEnterpriseMapper.xml"/>
+        <mapper resource="mapping/ObjEntProductClassMapper.xml"/>
+        <mapper resource="mapping/ObjEntProductMapper.xml"/>
+        <mapper resource="mapping/ObjEntShopMapper.xml"/>
+        <mapper resource="mapping/ObjEntUserMapper.xml"/>
+        <mapper resource="mapping/ObjIndUserMapper.xml"/>
+        <mapper resource="mapping/ObjProductEvaluationMapper.xml"/>
+        <mapper resource="mapping/ObjUserBuyLogMapper.xml"/>
+        <mapper resource="mapping/ObjUserCollectEntMapper.xml"/>
+        <mapper resource="mapping/ObjUserCollectProductMapper.xml"/>
+        <mapper resource="mapping/ObjUserComplaintEntMapper.xml"/>
+        <mapper resource="mapping/ObjUserComplaintProductMapper.xml"/>
+        <mapper resource="mapping/ObjUserInvoiceMapper.xml"/>
+        <mapper resource="mapping/ObjUserMapper.xml"/>
+        <mapper resource="mapping/ObjUserOrderMapper.xml"/>
+        <mapper resource="mapping/ObjUserShipAddressMapper.xml"/>
+        <mapper resource="mapping/ObjUserShopCartMapper.xml"/>
+        <mapper resource="mapping/RefAreaMapper.xml"/>
+        <mapper resource="mapping/RefIndustryMapper.xml"/>
+        <mapper resource="mapping/RefProductClassMapper.xml"/>
+        <mapper resource="mapping/UserMapper.xml"/>
+        <mapper resource="mapping/UserShipAddressMapper.xml"/>
+
+        <!--分割线-->
+
+        <mapper resource="mapping/UserMapper.xml" />
+        <mapper resource="mapping/UserShipAddressMapper.xml" />
+
+        <!--<mapper class="com/gx/dao/ObjUserDao.java" />-->
+
+        <!-- 注解实现 -->
+        <!--<mapper class="com/gx/dao/UserMapper.java" />-->
+
+    </mappers>
+</configuration>

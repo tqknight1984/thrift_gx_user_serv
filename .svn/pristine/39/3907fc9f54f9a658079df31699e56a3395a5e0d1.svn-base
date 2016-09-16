@@ -1,0 +1,16 @@
+
+
+# for redis cluster
+host_list = 192.168.1.244,192.168.1.243
+port_list = 6379,6379
+password = fa2dd47aef2b795aa7ec2d180f850974
+
+jedis.pool.maxActive = 100
+jedis.pool.timeout=60000
+jedis.pool.minIdle=50
+jedis.pool.maxIdle=100
+jedis.pool.maxWaitMillis=1500
+jedis.pool.testOnBorrow=true
+jedis.pool.testOnReturn=true
+
+

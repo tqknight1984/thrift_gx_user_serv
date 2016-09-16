@@ -1,0 +1,447 @@
+package main;
+
+import com.gx.dao.UserMapper;
+import main.mybatis.MybatisHandler;
+import main.mybatis.MybatisManager;
+import main.redis.RedisHandler;
+import main.smsClient.SmsHandler;
+import main.util.ConfigUtil;
+import main.util.IdUtil;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+
+import net.gx.thrift.ResList;
+import net.gx.thrift.ResObj;
+import net.gx.thrift.User;
+import org.apache.commons.lang.StringUtils;
+import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class UserImpl implements User.Iface {
+
+    private final static Logger logger = LoggerFactory.getLogger(UserImpl.class);
+
+
+    public void ping() throws TException {
+        System.out.println("calling ping ,length=" + System.currentTimeMillis());
+    }
+
+
+    @Override
+    public ResObj gen_phone_code(final String mobile) throws TException {
+
+        ResObj resObj = new ResObj();
+
+        final int phoneCode = (int) (new Random().nextDouble() * (900000) + 100000);
+        logger.info("1609021831 001 >>> gen_phone_code >>> " + mobile + ":" + phoneCode);
+
+        //插入redis
+        int res = RedisHandler.setPhoneCode(mobile, phoneCode);
+
+        if (res != 1) {
+            resObj.setCode(501);
+            resObj.setText("插入redis错误");
+            return resObj;
+        }
+
+        final String msg = "尊敬的用户：" + phoneCode + " 是您本次的短信验证码，2分钟内有效。";
+        //短消息
+        int smsRes = SmsHandler.sendSms(mobile, msg);
+
+        if (smsRes == 1) {
+            resObj.setCode(200);
+            resObj.setText("短消息发送成功");
+            resObj.putToData("code", String.valueOf(phoneCode));
+            resObj.putToData("mobile", mobile);
+        } else {
+            resObj.setCode(500);
+            resObj.setText("短消息发送失败");
+            return resObj;
+        }
+        return resObj;
+    }
+
+
+    @Override
+    public ResObj regedit_p(final String name, final String password, final String mobile, final String code) throws TException {
+        System.out.println("regedit_p -----name--->>" + name);
+        System.out.println("regedit_p ------mobile-->>" + mobile);
+
+        ResObj resObj = new ResObj();
+
+        if (StringUtils.isEmpty(name)) {
+            logger.info("1609021402001 >>> regedit_p >>> 参数错误!用户名为空!。");
+            resObj.setCode(201);
+            resObj.setText("用户名格式错误");
+            return resObj;
+        }
+
+        if (StringUtils.isEmpty(mobile)) {
+            logger.info("1609021402002 >>> regedit_p >>> 参数错误!手机号为空!。");
+            resObj.setCode(202);
+            resObj.setText("手机号格式错误");
+            return resObj;
+        }
+
+        boolean isMobile = ConfigUtil.isMobile(mobile);
+        if (!isMobile) {
+            logger.info("1609021402003 >>> regedit_p >>> 参数错误!手机号格式不对。");
+            resObj.setCode(202);
+            resObj.setText("手机号格式错误");
+            return resObj;
+        }
+
+
+        if (StringUtils.isEmpty(code)) {
+            logger.info("160912 003 >>> regedit_p >>> 参数错误!code不能为空。");
+            resObj.setCode(203);
+            resObj.setText("验证码不能为空");
+            return resObj;
+        }
+
+        String currCode = RedisHandler.getPhoneCode(mobile);
+        if (StringUtils.isEmpty(currCode) || !code.equals(currCode)) {
+            resObj.setCode(203);
+            resObj.setText("验证码错误");
+            return resObj;
+        }
+
+        //mysql procedures
+//        CALL `gxweb`.`pro_regist_p`('3004', 'name3004', 'pass3004', '15092293004', @ret);
+//        select @ret;
+
+        final Long uid = IdUtil.getId();
+        int callRes = MybatisHandler.callProRegistP(uid, name, password, mobile);
+
+        //插入redis
+        if (callRes == 200) {
+
+            Map<String, String> userInfo = new HashMap<>();
+            userInfo.put("uid", String.valueOf(uid));
+            userInfo.put("u_name", name);
+            userInfo.put("mobile", mobile);
+            userInfo.put("u_pass", password);
+            int redisRes = RedisHandler.insertUserInfo(userInfo);
+            logger.info("160912 001 >>> insert db for regist p >>> " + redisRes);
+            if (redisRes != 1) {
+                resObj.setCode(600);
+                resObj.setText("插入redis失败");
+                return resObj;
+            }
+
+        }
+
+        resObj.setCode(callRes);
+
+        switch (callRes) {
+            case 200: {
+                resObj.setText("注册成功");
+                resObj.putToData("uid", String.valueOf(uid));
+                break;
+            }
+            case 501: {
+                resObj.setText("UID冲突");
+                break;
+            }
+            case 502: {
+                resObj.setText("用户名重复");
+                break;
+            }
+            case 503: {
+                resObj.setText("手机重复");
+                break;
+            }
+            default: {
+                resObj.setText("注册失败");
+            }
+        }
+
+        return resObj;
+    }
+
+    @Override
+    public ResObj regedit_b(final String name, final String password, final String mobile, final String code, final String company) throws TException {
+
+        ResObj resObj = new ResObj();
+
+        if (StringUtils.isEmpty(name)) {
+            logger.info("1609021402001 >>> regedit_b >>> 参数错误!用户名为空!。");
+            resObj.setCode(201);
+            resObj.setText("用户名格式错误");
+            return resObj;
+        }
+
+        if (StringUtils.isEmpty(mobile)) {
+            logger.info("1609021402002 >>> regedit_b >>> 参数错误!手机号为空!。");
+            resObj.setCode(202);
+            resObj.setText("手机号格式错误");
+            return resObj;
+        }
+
+        boolean isMobile = ConfigUtil.isMobile(mobile);
+        if (!isMobile) {
+            logger.info("1609021402003 >>> regedit_b >>> 参数错误!手机号格式不对。");
+            resObj.setCode(202);
+            resObj.setText("手机号格式错误");
+            return resObj;
+        }
+
+        if (StringUtils.isEmpty(code)) {
+            logger.info("160912 003 >>> regedit_b >>> 参数错误!code不能为空。");
+            resObj.setCode(203);
+            resObj.setText("验证码不能为空");
+            return resObj;
+        }
+
+        String currCode = RedisHandler.getPhoneCode(mobile);
+        if (StringUtils.isEmpty(currCode) || !code.equals(currCode)) {
+            resObj.setCode(203);
+            resObj.setText("验证码错误");
+            return resObj;
+        }
+
+        //mysql procedures
+//        CALL `gxweb`.`pro_regist_p`('3004', 'name3004', 'pass3004', '15092293004', @ret);
+//        select @ret;
+
+        final Long uid = IdUtil.getId();
+        int callRes = MybatisHandler.callProRegistB(uid, name, password, mobile, company);
+
+        //插入redis
+        if (callRes == 200) {
+
+            Map<String, String> userInfo = new HashMap<>();
+            userInfo.put("uid", String.valueOf(uid));
+            userInfo.put("u_name", name);
+            userInfo.put("mobile", mobile);
+            userInfo.put("u_pass", password);
+
+            int redisRes = RedisHandler.insertUserInfo(userInfo);
+            if (redisRes != 1) {
+                resObj.setCode(600);
+                resObj.setText("插入redis失败");
+                return resObj;
+            }
+        }
+
+        resObj.setCode(callRes);
+
+        switch (callRes) {
+            case 200: {
+                resObj.setText("注册成功");
+                resObj.putToData("uid", String.valueOf(uid));
+                break;
+            }
+            case 501: {
+                resObj.setText("UID冲突");
+                break;
+            }
+            case 502: {
+                resObj.setText("用户名重复");
+                break;
+            }
+            case 503: {
+                resObj.setText("手机重复");
+                break;
+            }
+            default: {
+                resObj.setText("注册失败");
+            }
+        }
+
+        return resObj;
+    }
+
+    @Override
+    public ResObj check_auth(String name, String mobile) throws TException {
+        ResObj resObj = new ResObj();
+
+        if (StringUtils.isEmpty(name)) {
+            logger.info("160912 004 >>> check_auth >>> 参数错误!用户名为空!。");
+            resObj.setCode(201);
+            resObj.setText("用户名格式错误");
+            return resObj;
+        }
+
+        if (StringUtils.isEmpty(mobile)) {
+            logger.info("160912 004 >>> check_auth >>> 参数错误!密码不能为空!。");
+            resObj.setCode(202);
+            resObj.setText("密码不能为空");
+            return resObj;
+        }
+
+
+        return null;
+    }
+
+    @Override
+    public ResObj login(String nameOrPhone, String password) throws TException {
+
+        ResObj resObj = new ResObj();
+
+        if (StringUtils.isEmpty(nameOrPhone)) {
+            logger.info("160912 005 >>> login >>> 参数错误!用户名为空!。");
+            resObj.setCode(201);
+            resObj.setText("用户名格式错误");
+            return resObj;
+        }
+
+        if (StringUtils.isEmpty(password)) {
+            logger.info("160912 006 >>> login >>> 参数错误!密码不能为空!。");
+            resObj.setCode(202);
+            resObj.setText("密码不能为空");
+            return resObj;
+        }
+
+        boolean isMobile = ConfigUtil.isMobile(nameOrPhone);
+
+        Map<String, String> userInfo = null;
+        if(isMobile){
+            userInfo = RedisHandler.getUserInfoByPhone(nameOrPhone);
+
+        }else{
+            userInfo = RedisHandler.getUserInfoByUname(nameOrPhone);
+        }
+
+        resObj.setCode(200);
+        resObj.setData(userInfo);
+        return resObj;
+    }
+
+    @Override
+    public ResObj get_user(String name, String mobile) throws TException {
+
+
+
+        return null;
+    }
+
+    @Override
+    public ResObj setUserInfo(String name, String password) throws TException {
+        return null;
+    }
+
+    @Override
+    public ResList getUserAddress(String uid) throws TException {
+        ResList resList = new ResList();
+
+        List<Map<String, String>> lsData = RedisHandler.getUserAddresss(uid);
+        resList.setCode(200);
+        resList.setText("success");
+        resList.setLsdata(lsData);
+
+        return resList;
+    }
+
+    @Override
+    public ResObj setUserAddress(final String uid, final String consignee, final String areaid, final String address, final String mobile, final String telephone, final String zipcode, final short flag) throws TException {
+        ResObj resObj = new ResObj();
+
+        if (StringUtils.isEmpty(uid) && Long.parseLong(uid) > 0L) {
+            resObj.setCode(201);
+            resObj.setText("参数错误：uid");
+            return resObj;
+        }
+        if (StringUtils.isEmpty(consignee)) {
+            resObj.setCode(202);
+            resObj.setText("参数错误：consignee");
+            return resObj;
+        }
+        if (StringUtils.isEmpty(areaid)) {
+            resObj.setCode(203);
+            resObj.setText("参数错误：areaid");
+            return resObj;
+        }
+        if (StringUtils.isEmpty(address)) {
+            resObj.setCode(204);
+            resObj.setText("参数错误：address");
+            return resObj;
+        }
+        if (StringUtils.isEmpty(mobile)) {
+            resObj.setCode(205);
+            resObj.setText("参数错误：mobile");
+            return resObj;
+        }
+
+        int res = MybatisHandler.saveUserAddress( uid, consignee, areaid,  address, mobile, telephone, zipcode, flag) ;
+        if(res==1){
+            resObj.setCode(200);
+            resObj.setText("保存成功");
+        }else{
+            resObj.setCode(500);
+            resObj.setText("保存失败");
+        }
+        return resObj;
+    }
+
+    @Override
+    public ResObj updateUserAddress(String id, String consignee, String areaid, String address, String mobile, String telephone, String zipcode, short flag) throws TException {
+        ResObj resObj = new ResObj();
+
+        if (StringUtils.isEmpty(id) && Long.parseLong(id) > 0L) {
+            resObj.setCode(201);
+            resObj.setText("参数错误：uid");
+            return resObj;
+        }
+        if (StringUtils.isEmpty(consignee)) {
+            resObj.setCode(202);
+            resObj.setText("参数错误：consignee");
+            return resObj;
+        }
+        if (StringUtils.isEmpty(areaid)) {
+            resObj.setCode(203);
+            resObj.setText("参数错误：areaid");
+            return resObj;
+        }
+        if (StringUtils.isEmpty(address)) {
+            resObj.setCode(204);
+            resObj.setText("参数错误：address");
+            return resObj;
+        }
+        if (StringUtils.isEmpty(mobile)) {
+            resObj.setCode(205);
+            resObj.setText("参数错误：mobile");
+            return resObj;
+        }
+
+        int res = MybatisHandler.updateUserAddress( id, consignee, areaid,  address, mobile, telephone, zipcode, flag) ;
+        if(res==1){
+            resObj.setCode(200);
+            resObj.setText("修改成功");
+        }else{
+            resObj.setCode(500);
+            resObj.setText("修改失败");
+        }
+        return resObj;
+    }
+
+    @Override
+    public ResObj delUserAddress(String id) throws TException {
+
+        ResObj resObj = new ResObj();
+
+        if (StringUtils.isEmpty(id) && Long.parseLong(id) > 0L) {
+            resObj.setCode(201);
+            resObj.setText("参数错误：uid");
+            return resObj;
+        }
+
+        int res = MybatisHandler.delUserAddress( id) ;
+        if(res==1){
+            resObj.setCode(200);
+            resObj.setText("修改成功");
+        }else{
+            resObj.setCode(500);
+            resObj.setText("修改失败");
+        }
+        return resObj;
+    }
+
+
+
+
+}

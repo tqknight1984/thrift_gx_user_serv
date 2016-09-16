@@ -1,0 +1,70 @@
+namespace java net.gx.thrift
+
+
+struct ResObj {
+    1: required i32 code;
+    2: required string text;
+    3: optional map<string, string> data;
+    4: optional list<string> lsdata;
+}
+
+
+struct ResList {
+    1: required i32 code;
+    2: required string text;
+    5: optional list< map<string, string> > lsdata;
+}
+
+
+
+
+service User
+{
+
+    void ping(),
+
+    //生成手机验证码
+    ResObj gen_phone_code(1:required string mobile),
+
+	//个人注册
+	ResObj regedit_p(1:required string name, 2:required string password, 3:required string mobile, 4:required string code),
+	
+	//企业注册
+	ResObj regedit_b(1:required string name, 2:required string password, 3:required string mobile, 4:required string code, 5:required string company),
+
+
+
+	//检查帐号有效性
+	ResObj check_auth(1:string name,2:string password),
+
+    //用户登录
+	ResObj login(1:required string nameOrPhone, 2:required string password),
+
+	//查询帐号信息
+	ResObj get_user(1:string name,2:string mobile),
+
+
+    //保存个人信息
+    ResObj setUserInfo(1:required string name, 2:required string password),
+
+    //获取收件地址
+    ResList getUserAddress(1:required string uid),
+
+    //新增收件地址    id, uid, consignee, areaid, address, mobile, telephone, zipcode, flag
+    ResObj setUserAddress(1:required string uid, 2:required string consignee, 3:required string areaid, 4:required string address, 5:required string mobile, 6:string telephone, 7:string zipcode, 8:required byte flag),
+
+    //修改收件地址
+    ResObj updateUserAddress(1:required string id, 2:required string consignee, 3:required string areaid, 4:required string address, 5:required string mobile, 6:string telephone, 7:string zipcode, 8:required byte flag),
+
+    //删除收件地址
+    ResObj delUserAddress(1:required string id),
+
+    //取地区信息（市级）
+    ResObj getAreaInfo(1:required string areaId),
+
+    //取地区信息（市级）
+    ResList getCitysInfo(),
+
+    //取地区信息（通过fatherid）
+    ResList getCountysInfo(1:required i32 cityid),
+}

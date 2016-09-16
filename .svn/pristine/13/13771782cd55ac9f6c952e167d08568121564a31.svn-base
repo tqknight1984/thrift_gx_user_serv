@@ -1,0 +1,133 @@
+package main.smsClient;
+
+import com.wmz7year.thrift.pool.ThriftConnectionPool;
+import com.wmz7year.thrift.pool.config.ThriftConnectionPoolConfig;
+import com.wmz7year.thrift.pool.connection.ThriftConnection;
+import com.wmz7year.thrift.pool.exception.ThriftConnectionPoolException;
+import main.util.MyConfig;
+import main.util.ZKClient;
+import net.gx.thrift.Sms;
+import org.apache.thrift.TServiceClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+
+
+/**
+ * Created by app on 16/9/9.
+ */
+public class SmsClientManager {
+
+    private final static Logger logger = LoggerFactory.getLogger(SmsClientManager.class);
+
+    private static ThriftConnectionPool<Sms.Client> pool = null;
+
+
+
+    public static void main(String[] args){
+        System.out.println(123);
+
+        SmsHandler.sendSms("18501735859","123123");
+    }
+
+
+
+
+
+    private static int init() {
+
+        ZKClient zkClient = new ZKClient();
+        //"192.168.1.251:2181"
+        if (zkClient.init(MyConfig.zk_client, 3000) == false) {
+            logger.error("connect zookeeper fail.");
+            return -1;
+        }
+
+        String serv = zkClient.get_service("/gx/cfg/service", "GX-Service-Sms");
+        String[] info = serv.split(":");
+
+        if (info.length < 1) {
+            logger.error("get zookeeper node(/gx/cfg/service/GX-Service-User) fail !");
+            return -2;
+        }
+
+        String host = info[0];
+        int port = Integer.parseInt(info[1]);
+
+
+        ThriftConnectionPoolConfig config = new ThriftConnectionPoolConfig();
+        config.setConnectTimeout(3000);
+        config.setThriftProtocol(ThriftConnectionPoolConfig.TProtocolType.BINARY);
+        config.setClientClass(Sms.Client.class);
+        config.addThriftServer(host, port);
+        config.setMaxConnectionPerServer(30);
+        config.setMinConnectionPerServer(3);
+        config.setIdleMaxAge(300, TimeUnit.SECONDS);
+        config.setMaxConnectionAge(300);
+        config.setLazyInit(false);
+        try {
+
+            pool = new ThriftConnectionPool<Sms.Client>(config);
+
+        } catch (ThriftConnectionPoolException e) {
+            e.printStackTrace();
+        }
+
+        return 1;
+    }
+
+
+    private static ThriftConnection getConnection() {
+        ThriftConnection<Sms.Client> tConnection = null;
+
+        try {
+            if (pool == null) {
+                init();
+            }
+
+            tConnection = pool.getConnection();
+        } catch (ThriftConnectionPoolException e) {
+            logger.error(e.getMessage());
+            e.printStackTrace();
+        }
+        return tConnection;
+    }
+
+
+    public static <T> T doSomething(ThriftHandler<T> handler) {
+        ThriftConnection connection = null;
+
+        try {
+            connection = getConnection();
+            TServiceClient client = connection.getClient();
+
+            return handler.handle(client);
+
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+            e.printStackTrace();
+        } finally {
+            if (connection != null) {
+                try {
+                    connection.close();
+                } catch (IOException e) {
+                    logger.error(e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        return null;
+    }
+
+
+    public abstract static class ThriftHandler<T> {
+
+        protected abstract T handle(org.apache.thrift.TServiceClient client);
+
+    }
+
+
+}
