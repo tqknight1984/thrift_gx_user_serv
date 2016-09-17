@@ -44,7 +44,6 @@ service User
 	//查询帐号信息
 	ResObj get_user(1:string name,2:string mobile),
 
-
     //保存个人信息
     ResObj setUserInfo(1:required string name, 2:required string password),
 
@@ -63,10 +62,10 @@ service User
     //修改默认地址
     ResObj changeDefaultAddress(1:required i64 uid, 2:required i32 address_id),
 
-    //取地区信息（市级）
+    //取地级市（市级）
     ResObj getAreaInfo(1:required string areaId),
 
-    //取地区信息（市级）
+    //取地区信息
     ResList getCitysInfo(),
 
     //取地区信息（通过fatherid）
@@ -77,5 +76,21 @@ service User
 
     //修改密码
     ResObj changePwd(1:required i64 uid, 2:required string old_pwd, 3:required string new_pwd),
+
+
+    //获取发票      1|普通；2|增值
+    ResList getUserInvoice(1:required i64 uid, 2:required byte invoice_type),
+
+    //新增发票    id, uid, i_type, title, flag, company, telephone, taxpayer, address, bank, bank_no
+    ResObj setUserInvoice(1:required i64 uid, 2:required string i_type, 3:required string title, 4:required byte flag, 5:required string company, 6:string telephone, 7:string taxpayer, 8:required string address, 9:string bank, 10:required string bank_no),
+
+    //修改发票
+    ResObj updateUserInvoice(1:required i32 invoice_id,2:required string i_type, 3:required string title, 4:required byte flag, 5:required string company, 6:string telephone, 7:string taxpayer, 8:required string address, 9:string bank, 10:required string bank_no),
+
+    //删除发票
+    ResObj delUserInvoice(1:required i32 invoice_id, 2:required string uid, 3:required byte i_type),
+
+    //修改默认发票
+    ResObj changeDefaultInvoice(1:required i64 uid, 2:required i32 invoice_id, 3:required byte i_type),
 
 }

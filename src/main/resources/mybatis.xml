@@ -53,6 +53,7 @@
 
         <mapper resource="mapping/UserMapper.xml" />
         <mapper resource="mapping/UserShipAddressMapper.xml" />
+        <mapper resource="mapping/UserInvoiceMapper.xml" />
 
         <!--<mapper class="com/gx/dao/ObjUserDao.java" />-->
 

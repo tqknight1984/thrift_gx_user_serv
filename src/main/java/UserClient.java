@@ -19,7 +19,8 @@ public class UserClient {
             logger.error("connect zookeeper fail.");
             return;
         }
-        String serv = zkClient.get_service("/gx/cfg/service", "GX-Service-Sms");
+        String serv = zkClient.get_service("/gx/cfg/service", "GX-Service-User");
+        logger.info("User serv info :"+serv);
         String[] info = serv.split(":");
 
         TTransport transport;
@@ -28,7 +29,13 @@ public class UserClient {
             TProtocol protocol = new TBinaryProtocol(transport);
             User.Client client = new User.Client(protocol);
             transport.open();
+
+
             //client.regedit_p("aaa","15026693656");
+
+            client.gen_phone_code("18501735859",2);
+
+
             transport.close();
         } catch (TTransportException e) {
             e.printStackTrace();

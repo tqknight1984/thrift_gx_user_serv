@@ -18,6 +18,7 @@ import redis.RedisHandler;
 import smsClient.SmsHandler;
 import util.ConfigUtil;
 import util.IdUtil;
+import util.MobileUtil;
 import util.ObjectToMapUtil;
 
 public class UserImpl implements User.Iface {
@@ -33,6 +34,12 @@ public class UserImpl implements User.Iface {
     public ResObj gen_phone_code(String mobile, int type) throws TException {
 
         ResObj resObj = new ResObj();
+
+        if (!MobileUtil.isMobile(mobile)) {
+            resObj.setCode(201);
+            resObj.setText("手机格式不对");
+            return resObj;
+        }
 
         final int phoneCode = (int) (new Random().nextDouble() * (900000) + 100000);
         logger.info("1609021831 001 >>> gen_phone_code >>> " + mobile + ":" + phoneCode);
@@ -80,11 +87,17 @@ public class UserImpl implements User.Iface {
         }
 
         String curCode = RedisHandler.getPhoneCode(mobile, type);
-        if(StringUtils.isNotEmpty(curCode) && code.equals(curCode)){
+        if (StringUtils.isEmpty(curCode)) {
+            resObj.setCode(203);
+            resObj.setText("验证码已过期");
+            return resObj;
+        }
+
+        if (code.equals(curCode)) {
             resObj.setCode(200);
             resObj.setText("success");
             return resObj;
-        }else{
+        } else {
             resObj.setCode(500);
             resObj.setText("fail");
             return resObj;
@@ -389,7 +402,7 @@ public class UserImpl implements User.Iface {
     public ResObj setUserAddress(final String uid, final String consignee, final String areaid, final String address, final String mobile, final String telephone, final String zipcode, final byte flag) throws TException {
         ResObj resObj = new ResObj();
 
-        if (StringUtils.isEmpty(uid) && Long.parseLong(uid) > 0L) {
+        if (StringUtils.isEmpty(uid) || Long.parseLong(uid) < 1L) {
             resObj.setCode(201);
             resObj.setText("参数错误：uid");
             return resObj;
@@ -431,7 +444,7 @@ public class UserImpl implements User.Iface {
     public ResObj updateUserAddress(String id, String consignee, String areaid, String address, String mobile, String telephone, String zipcode) throws TException {
         ResObj resObj = new ResObj();
 
-        if (StringUtils.isEmpty(id) && Long.parseLong(id) > 0L) {
+        if (StringUtils.isEmpty(id) || Long.parseLong(id) < 1L) {
             resObj.setCode(201);
             resObj.setText("参数错误：uid");
             return resObj;
@@ -513,10 +526,10 @@ public class UserImpl implements User.Iface {
         if (res == 1) {
             resObj.setCode(200);
             resObj.setText("删除成功");
-        } else {
-            resObj.setCode(500);
-            resObj.setText("删除失败");
+            return resObj;
         }
+        resObj.setCode(500);
+        resObj.setText("删除失败");
         return resObj;
     }
 
@@ -588,7 +601,7 @@ public class UserImpl implements User.Iface {
     public ResObj changePwd(long uid, String old_pwd, String new_pwd) throws TException {
         ResObj resObj = new ResObj();
 
-        if (StringUtils.isEmpty(old_pwd) || StringUtils.isEmpty(new_pwd) ) {
+        if (StringUtils.isEmpty(old_pwd) || StringUtils.isEmpty(new_pwd)) {
             resObj.setCode(201);
             resObj.setText("参数错误：old_pwd or new_pwd");
             return resObj;
@@ -596,9 +609,131 @@ public class UserImpl implements User.Iface {
 
         int res = MybatisHandler.changePwd(uid, old_pwd, new_pwd);
 
+        if (res == 502) {
+            resObj.setCode(502);
+            resObj.setText("密码错误");
+            return resObj;
+        }
 
+        if (res == 1) {
+            resObj.setCode(200);
+            resObj.setText("success");
+            return resObj;
+        } else {
+            resObj.setCode(500);
+            resObj.setText("修改失败");
+            return resObj;
+        }
+    }
 
-        return null;
+    @Override
+    public ResList getUserInvoice(long uid, byte invoice_type) throws TException {
+        ResList resList = new ResList();
+
+        List<Map<String, String>> lsData = RedisHandler.getUserInvoice(uid, invoice_type);
+        resList.setCode(200);
+        resList.setText("success");
+        resList.setLsdata(lsData);
+
+        return resList;
+    }
+
+    @Override
+    public ResObj setUserInvoice(long uid, String i_type, String title, byte flag, String company, String telephone, String taxpayer, String address, String bank, String bank_no) throws TException {
+        ResObj resObj = new ResObj();
+
+        if (uid < 0L) {
+            resObj.setCode(201);
+            resObj.setText("参数错误：uid");
+            return resObj;
+        }
+        if (StringUtils.isEmpty(i_type)) {
+            resObj.setCode(202);
+            resObj.setText("参数错误：i_type");
+            return resObj;
+        }
+
+        int res = MybatisHandler.saveUserInvoice(uid, i_type, title, flag, company, telephone, taxpayer, address, bank, bank_no);
+        if (res == 1) {
+            resObj.setCode(200);
+            resObj.setText("保存成功");
+            return resObj;
+        }
+        resObj.setCode(500);
+        resObj.setText("保存失败");
+        return resObj;
+    }
+
+    @Override
+    public ResObj updateUserInvoice(int invoice_id, String i_type, String title, byte flag, String company, String telephone, String taxpayer, String address, String bank, String bank_no) throws TException {
+        ResObj resObj = new ResObj();
+
+        if (invoice_id > 1L) {
+            resObj.setCode(201);
+            resObj.setText("参数错误：uid");
+            return resObj;
+        }
+
+        int res = MybatisHandler.updateUserInvoice(invoice_id, i_type, title, flag, company, telephone, taxpayer, address, bank, bank_no);
+        if (res == 1) {
+            resObj.setCode(200);
+            resObj.setText("修改成功");
+            return resObj;
+        }
+
+        resObj.setCode(500);
+        resObj.setText("修改失败");
+        return resObj;
+    }
+
+    @Override
+    public ResObj delUserInvoice(int invoice_id, String uid, byte i_type) throws TException {
+        ResObj resObj = new ResObj();
+
+        if (invoice_id < 1L) {
+            resObj.setCode(201);
+            resObj.setText("参数错误：invoice_id");
+            return resObj;
+        }
+
+        int res = MybatisHandler.delUserInvoice(invoice_id, uid, i_type);
+        if (res == 1) {
+            resObj.setCode(200);
+            resObj.setText("删除成功");
+            return resObj;
+        }
+
+        resObj.setCode(500);
+        resObj.setText("删除失败");
+        return resObj;
+    }
+
+    @Override
+    public ResObj changeDefaultInvoice(long uid, int invoice_id, byte i_type) throws TException {
+        ResObj resObj = new ResObj();
+
+        if (uid < 1) {
+            resObj.setCode(201);
+            resObj.setText("参数错误：uid");
+            return resObj;
+        }
+
+        if (invoice_id < 1) {
+            resObj.setCode(202);
+            resObj.setText("参数错误：invoice_id");
+            return resObj;
+        }
+
+        int res = MybatisHandler.setDefaultInvoice(uid, invoice_id, i_type);
+        if (res == 1) {
+            resObj.setCode(200);
+            resObj.setText("修改成功");
+            return resObj;
+        }
+
+        resObj.setCode(500);
+        resObj.setText("修改失败");
+        return resObj;
     }
 
 

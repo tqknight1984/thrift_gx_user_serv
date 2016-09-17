@@ -35,25 +35,7 @@ public class RedisManager {
 
 		 init();
 
-		 final String pid = "1234732";
-
-		 String res = RedisManager.doSomething(new JedisHandler<String>() {
-
-			 @Override
-			 protected String handle(JedisCluster jedis) {
-
-				 jedis.set("testttt" + pid, "aaaaaaa");
-
-
-//				 Map<String, String> map = jedis.hgetAll("{tb_user_detail}:userid:10029" );
-
-
-
-				 //...
-				 return "123";
-			 }
-
-		 });
+        int res =  RedisHandler.setPhoneCode("1333333333",111111,2);
 
 		 System.out.println("-->"+res);
 	 }

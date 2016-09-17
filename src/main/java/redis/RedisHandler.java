@@ -1,6 +1,8 @@
 package redis;
 
 import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import redis.clients.jedis.JedisCluster;
 
 import java.util.ArrayList;
@@ -9,6 +11,9 @@ import java.util.Map;
 import java.util.Set;
 
 public class RedisHandler {
+
+
+    private final static Logger logger = LoggerFactory.getLogger(RedisHandler.class);
 
     /**
      * 根据id取用户信息
@@ -68,15 +73,19 @@ public class RedisHandler {
             protected Integer handle(JedisCluster jedis) {
                 //注册
                 if (type == 1) {
-                    jedis.set("gx_phone_code:" + mobile, String.valueOf(phoneCode));
-                    jedis.expire("gx_phone_code:" + mobile, 60);
+                    String key1 = "gx_phone_code:" + mobile;
+                    jedis.set(key1, String.valueOf(phoneCode));
+                    jedis.expire(key1, 120);
+                    logger.debug("160917 001 >>> 手机验证码存入redis:" + key1 + ":" + phoneCode);
                     return 1;
                 }
 
                 //修改密码
                 if (type == 2) {
-                    jedis.set("gx_change_password_code:" + mobile, String.valueOf(phoneCode));
-                    jedis.expire("gx_change_password_code:" + mobile, 60);
+                    String key2 = "gx_change_password_code:" + mobile;
+                    String setsStr = jedis.set(key2, String.valueOf(phoneCode));
+                    Long expire = jedis.expire(key2 + mobile, 120);
+                    logger.debug("160917 001 >>> 手机验证码存入redis:" + key2 + ":" + phoneCode);
                     return 1;
                 }
 
@@ -351,18 +360,19 @@ public class RedisHandler {
             protected Integer handle(JedisCluster jedis) {
 
 
+
                 Set<String> addIdSet = jedis.zrange("obj_user_ship_address:sset:uid:" + uid, 0, -1);
-                for (String addId : addIdSet) {
-                    if (addId.equals(address_id)) {
+                for (String addId :addIdSet){
+                    if(addId.equals(address_id)){
                         jedis.hset("obj_user_ship_address:id:" + addId, "flag", "1");
-                        jedis.zadd("obj_user_ship_address:sset:uid:" + uid, 1L, addId);
-                    } else {
+                    }else{
                         jedis.hset("obj_user_ship_address:id:" + addId, "flag", "0");
-                        jedis.zadd("obj_user_ship_address:sset:uid:" + uid, 0L, addId);
                     }
                 }
 
-                //用户默认address
+                Long zaddRes = jedis.zadd("obj_user_ship_address:sset:uid:" + uid, 1L, address_id);
+
+
                 jedis.del("obj_user_ship_address:sset:uid_flag:" + uid);
                 jedis.zadd("obj_user_ship_address:sset:uid_flag:" + uid, 1, address_id);
                 return 1;
@@ -474,6 +484,114 @@ public class RedisHandler {
                 return 1;
             }
         });
+        return res;
+    }
+
+
+    public static List<Map<String, String>> getUserInvoice(final long uid, final byte invoice_type) {
+
+        return RedisManager.doSomething(new RedisManager.JedisHandler<List<Map<String, String>>>() {
+            @Override
+            protected List<Map<String, String>> handle(JedisCluster jedis) {
+                List<Map<String, String>> invoiceList = new ArrayList<Map<String, String>>();
+
+                String rangKey = "obj_user_invoice:sset:uid_i_type:" + uid + "_" + invoice_type;
+                Set<String> ids = jedis.zrevrange(rangKey, 0, -1);
+
+                for (int i = 0; i < ids.size(); i++) {
+                    Map<String, String> map = jedis.hgetAll("obj_user_invoice:id:" + ids.toArray()[i]);
+                    if (map != null && map.size() > 0) {
+                        invoiceList.add(map);
+                    }
+                }
+
+                return invoiceList;
+            }
+        });
+    }
+
+    public static int addUserInvoice(final Map<String, String> userInvoiceMap) {
+        final String id = userInvoiceMap.get("id");
+        final String uid = userInvoiceMap.get("uid");
+        final String flag = userInvoiceMap.get("flag");
+        final String i_type = userInvoiceMap.get("i_type");
+
+
+        int res = RedisManager.doSomething(new RedisManager.JedisHandler<Integer>() {
+            @Override
+            protected Integer handle(JedisCluster jedis) {
+
+                String hmsetRes = jedis.hmset("obj_user_invoice:id:" + id, userInvoiceMap);
+                Long zaddRes = jedis.zadd("obj_user_invoice:sset:uid_i_type:" + uid + "_" + i_type, Long.parseLong(flag), id);
+
+                //默认发票
+                if ("1".equals(flag)) {
+                    jedis.zadd("obj_user_invoice:sset:uid_i_type_flag:" + uid+"_"+i_type, 1, id);
+                }
+
+                return 1;
+            }
+        });
+
+        return res;
+    }
+
+    public static int updateUserInvoice(final Map<String, String> map) {
+        final String id = map.get("id");
+        final String uid = map.get("uid");
+        final String flag = map.get("flag");
+
+        int res = RedisManager.doSomething(new RedisManager.JedisHandler<Integer>() {
+            @Override
+            protected Integer handle(JedisCluster jedis) {
+
+                String key = "obj_user_address:id:" + id;
+                for (Map.Entry<String, String> entry : map.entrySet()) {
+                    String field = entry.getKey();
+                    String value = entry.getValue();
+                    jedis.hset(key, field, value);
+                }
+                return 1;
+            }
+        });
+
+        return res;
+    }
+
+    public static int delUserInvoice(final int invoice_id, final String uid, final byte i_type) {
+        return RedisManager.doSomething(new RedisManager.JedisHandler<Integer>() {
+            @Override
+            protected Integer handle(JedisCluster jedis) {
+                jedis.del("obj_user_invoice:id:" + invoice_id);
+                jedis.zrem("obj_user_invoice:sset:uid_i_type:" + uid+"_"+i_type, String.valueOf(invoice_id));
+                jedis.zrem("obj_user_invoice:sset:uid_i_type_flag:" + uid+"_"+i_type, String.valueOf(invoice_id));
+                return 1;
+            }
+        });
+    }
+
+    public static int setDefaultInvoice(final long uid, final int invoice_id, final byte i_type) {
+        int res = RedisManager.doSomething(new RedisManager.JedisHandler<Integer>() {
+            @Override
+            protected Integer handle(JedisCluster jedis) {
+
+                Set<String> idSet = jedis.zrange("obj_user_invoice:sset:uid_i_type:" + uid+"_"+i_type, 0, -1);
+                for (String id : idSet) {
+                    if (id.equals(invoice_id)) {
+                        jedis.hset("obj_user_invoice:id:" + id, "flag", "1");
+                        jedis.zadd("obj_user_invoice:sset:uid_i_type:" + uid+"_"+i_type, 1L, id);
+                    } else {
+                        jedis.hset("obj_user_invoice:id:" + id, "flag", "0");
+                        jedis.zadd("obj_user_invoice:sset:uid_i_type:" + uid+"_"+i_type, 0L, id);
+                    }
+                }
+
+                jedis.del("obj_user_invoice:sset:uid_i_type_flag:" + uid+"_"+i_type);
+                jedis.zadd("obj_user_invoice:sset:uid_i_type_flag:" + uid+"_"+i_type, 1L, String.valueOf(invoice_id));
+                return 1;
+            }
+        });
+
         return res;
     }
 }

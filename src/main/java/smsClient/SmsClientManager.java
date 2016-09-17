@@ -46,6 +46,7 @@ public class SmsClientManager {
         }
 
         String serv = zkClient.get_service("/gx/cfg/service", "GX-Service-Sms");
+        logger.info("160917 003 >>> get sms info from zookeeper:" + serv);
         String[] info = serv.split(":");
 
         if (info.length < 1) {
